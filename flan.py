@@ -15,9 +15,8 @@ def get_models(category_dir):
 @app.route("/")
 def home():
     """navigate all models"""
-    print "home"
     category_dirs = get_category_dirs()
-    # tuples of (category, models)
+    # tuples of (category, models list)
     cat_model_tups = []
     for category_dir in category_dirs:
         cat_model_tups.append(category_dir.split("/")[-1], get_models(category_dir))
@@ -26,7 +25,6 @@ def home():
 @app.route("/<category>")
 def category_page(category):
     """models within a single category"""
-    print "category_page"
     category_dir = os.path.join(conf.static_dir, category)
     models = [model for model in os.listdir(category_dir) if os.isdir(os.path.join(category_dir, model))]
     kw = dict(category=category, models=models)
@@ -35,24 +33,18 @@ def category_page(category):
 @app.route("/tag/<tag_name>")
 def tagged_page(tag_name):
     """models with `tag_name` in their 'tags.txt' file"""
-    print "tagged_page"
     return render_template("category.html", **kw)
 
 @app.route("/<category>/<model_name>/")
 def model_page(category, model_name):
     """aggregate the outputs from this model's analysis"""
-    print "model_page"
     model_dir = os.path.join(conf.static_dir, category, model_name)
-    print "after"
     kw = {
         "category": category, 
         "model_name": model_name,
     }
-    print "kw 1", kw
-    print model_dir
     with open(os.path.join(model_dir, "fit_stats.txt")) as f:
         kw["fit_stats"] = f.read()
-    print "kw", kw
     return render_template("model.html", **kw)
 
 if __name__ == "__main__":
