@@ -11,7 +11,7 @@ datatypes = [
     "positive_ordered", "simplex", "unit_vector", "cov_matrix",
     "corr_matrix", "cholesky_factor_cov", "cholesky_factor_corr"
 ]
-declaration_re = re.compile("(%s)(<[\w,=]+>){0,1}(\[[\w,\-\+\*\/]\]){0,1} ([\w_]+)(\[[\w,\+\-\*\/]+\]){0,1}" % "|".join(datatypes))
+declaration_re = re.compile("(%s)(<[\w,=]+>){0,1}(\[[\w,\-\+\*\/]\]){0,1}\s+([\w_]+)(\[[\w,\+\-\*\/]+\]){0,1}" % "|".join(datatypes))
 # regexs to pull out code blocks
 regexs = [
     ("data", re.compile("data\s*{")),
@@ -29,12 +29,7 @@ fillcolors = {
     "generated quantities": "deepskyblue2",
 }
 
-# data -> gray filled rects
-# params -> white circles
-# deterministic -> double bordered
-# plates for iteration/vectorization (by unique index)
-
-
+# ----- graph logic ----- #
 class Node(object):
     """
     `name`: Stan variable name
@@ -63,31 +58,40 @@ class DAG(object):
     Plates, pydot.Cluster instances, correspond to uniquely-indexed Stan variables.
     This splits up plates that should actually be drawn together.
     It should remain somewhat easy to follow what is going on. 
+
+    data -> gray filled rects
+    params -> white circles
+    deterministic -> double bordered
     """
     def __init__(self, nodes, edges):
         self.nodes = nodes
         self.edges = edges
-        self.dims = list(set([node.dim for node in self.nodes if node.dim]))
-        self.clusters = {repr(dim): pydot.Cluster(repr(dim), label=repr(dim), fontsize=20) for dim in self.dims}
+        self.dims = list(set([node.dims for node in self.nodes if node.dims]))
+        self.clusters = {repr(dim): pydot.Cluster(str(i), 
+                                                  label='%s' % repr(dim).replace("'", ""), 
+                                                  fontsize=20) for i, dim in enumerate(self.dims)}
         self.graph = pydot.Dot(graph_type="digraph")
 
         for node in self.nodes:
-            if node.dim:
-                self.clusters[repr(node.dim)].add_node(pydot.Node(node.name, 
-                                                       label=node.name, 
-                                                       style="filled",
-                                                       fillcolor=fillcolors[node.block]))
+            if node.dims:
+                self.clusters[repr(node.dims)].add_node(pydot.Node('%s' % node.name, 
+                                                        label='"%s"' % node.name, 
+                                                        style="filled",
+                                                        fillcolor=fillcolors[node.block]))
             else:
-                self.graph.add_node(pydot.Node(node.name, label=node.name))
+                self.graph.add_node(pydot.Node('%s' % node.name, label='"%s"' % node.name))
 
-        for cluster in self.clusters:
-            self.graph.add_subgraph(cluster)
+        for dims in self.clusters:
+            self.graph.add_subgraph(self.clusters[dims])
 
         for edge in self.edges:
-            self.graph.add_edge(pydot.Edge(edge.from_name, edge.to_name))
+            self.graph.add_edge(pydot.Edge('%s' % edge.from_name, '%s' % edge.to_name))
 
     def write_graph(self, filepath):
         self.graph.write_png(filepath)
+
+    def write_raw(self, filepath):
+        self.graph.write_raw(filepath)
 
 
 # ----- parsing logic ----- #
@@ -129,11 +133,12 @@ def get_blocks(code):
             blocks[name] = block
     return blocks
 
+# -- nodes -- #
 def process_dims(dim, array_dim):
     dim = dim.replace("[", "").replace("]", "").split(",") if dim else []
     array_dim = array_dim.replace("[", "").replace("]", "").split(",") if array_dim else []
     dims = dim + array_dim  # sort?
-    return dims if len(dims) > 0 else None
+    return tuple(dims) if len(dims) > 0 else None
  
 def build_nodes(blocks, debug=False):
     """
@@ -141,9 +146,9 @@ def build_nodes(blocks, debug=False):
     The model block contains no variable declarations.
     """
     block_names = ["data", "transformed data", "parameters", "transformed parameters", "generated quantities"]
-    nodes = {}
+    nodes_dict = {}
     for block_name in block_names:
-        lines = blocks.get(name)
+        lines = blocks.get(block_name)
         if lines:
             for line in lines:
                 try:
@@ -155,31 +160,56 @@ def build_nodes(blocks, debug=False):
                         print "dim:", dim
                         print "name:", name
                         print "array_dim:", array_dim
-                    nodes[name] = Node(name, datatype, constraint, process_dims(dim, array_dim), block_name)
+                    nodes_dict[name] = Node(name, datatype, constraint, process_dims(dim, array_dim), block_name)
                 except:
                     if debug:
                         print "no match"
-    return nodes
+    return nodes_dict
 
-def build_edges(blocks, nodes):
+# -- edges -- #
+def collapse_multiline(lines):
+    for i, line in enumerate(lines):
+        if ("~" in line or "<-" in line) and line[-1] != ";":
+            print "line:", line, "   last char: < %s >" % line[-1]
+            raw_input("--> ")
+            return collapse_multiline(lines[:i] + ["".join(lines[i:i+2])] + lines[i+2:])
+    return lines
+
+def build_edges(blocks, nodes_dict):
     """
     Parse the blocks where we do assignment and distribution declarations for edges.
     For assignments, set the `deterministic` attribute of the assigned node to be True.
     """
-    node_names = nodes.keys()
+    node_names = nodes_dict.keys()
+    nodes_re = re.compile("|".join(node_names))
     block_names = ["transformed data", "transformed parameters", "model", "generated quantities"]
-
+    edges = []
+    for block_name in block_names:
+        lines = blocks.get(block_name)
+        if lines:
+            lines = filter(lambda line: "~" in line or "<-" in line, collapse_multiline(lines))
+            for line in lines:
+                line = re.sub("\s+", "", line)
+                deterministic = "<-" in line
+                to_str, from_str = line.split("<-" if deterministic else "~")
+                to_node = re.findall(nodes_re, to_str)[0]
+                from_nodes = re.findall(nodes_re, to_str)
+                # note that this node is deterministic
+                if deterministic:
+                    nodes_dict[to_node].deterministic = True
+                for from_node in from_nodes:
+                    edges.append(Edge(from_node, to_node))
     return edges
 
-def parse_stan(code):
+def parse_stan(code, debug=False):
     blocks = get_blocks(code)
-
-    # temp
-    for name in blocks:
-        print name
-        for line in blocks[name]:
-            print "  ", line
-
-
-
+    if debug:
+        for name in blocks:
+            print name
+            for line in blocks[name]:
+                print "  ", line
+    nodes_dict = build_nodes(blocks)
+    edges = build_edges(blocks, nodes_dict)
+    nodes = nodes_dict.values()
+    return DAG(nodes, edges)
 
