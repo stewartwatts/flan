@@ -20,6 +20,9 @@ Flan is intended to streamline the bookkeeping involved in building up Stan mode
  - go to `http://127.0.0.1:5000/` or wherever Flask indicates it is serving
 
 #### Graphviz
- - A *very* rough, untested attempt is made to parse Stan model definitions into Graphviz graphs. This is only basically tested.  
+ - A *very* rough, untested attempt is made to parse Stan model definitions into Graphviz Dot graphs. 
  - Dot cannot draw overlapping plates, so instead plates correspond to Stan's indexing of a datatype.  For example, to model `i` students answering `j` question, with the answers indexed by `[i, j]`, there will be a plate for the `i` students, the `j` questions, and the `[i, j]` answers, instead of two overlapping plates that share the answers.
  - Graphviz is not Python software, so it must be pre-installed with a non-pip package manager, like apt-get.
+
+ #### Dependencies
+ - Apart from Graphviz, the other dependencies listed in requirements.txt are all easily installed with pip.
