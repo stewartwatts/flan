@@ -218,7 +218,7 @@ def build_edges(blocks, nodes_dict, debug=True):
                 deterministic = "<-" in line
                 to_str, from_str = line.split("<-" if deterministic else "~")
                 to_node = re.findall(nodes_re, to_str)[0]
-                from_nodes = re.findall(from_nodes_re, from_str)
+                from_nodes = re.findall(nodes_re, from_str)
                 # filter out instances where a variable name is *contained* in another variable name
                 from_nodes = [n for n in from_nodes if re.search("\W%s\W" % n, ";" + from_str)]
 
