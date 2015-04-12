@@ -7,7 +7,7 @@ datatypes = [
     "positive_ordered", "simplex", "unit_vector", "cov_matrix",
     "corr_matrix", "cholesky_factor_cov", "cholesky_factor_corr"
 ]
-declaration_re = re.compile("(%s)(<[\w,=]+>){0,1}(\[[\w_,\-\+\*\/]+\]){0,1}\s+([\w_]+)(\[[\w_,\+\-\*\/]+\]){0,1}" % "|".join(datatypes))
+declaration_re = re.compile("(%s)(<[\w,\s=]+>){0,1}(\[[\w\s_,\-\+\*\/]+\]){0,1}\s+([\w_]+)(\[[\w\s_,\+\-\*\/]+\]){0,1}" % "|".join(datatypes))
 # regexs to pull out code blocks
 regexs = [
     ("data", re.compile("data\s*{")),
