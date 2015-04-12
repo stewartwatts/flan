@@ -10,9 +10,9 @@ class NewSpec(ModelSpec):
     2. Make default args for `single_params`, `param_pairs`, `param_groups`
     """
     def __init__(self, category, model_name, 
-                 single_params=[], 
-                 param_pairs=[], 
-                 param_groups={}): 
+                 single_params=["mu", "lp__"], 
+                 param_pairs=[("mu", "lp__")], 
+                 param_groups={"various": ["mu", "lp__"]}): 
         super(NewSpec, self).__init__(category, model_name,
                                       single_params=single_params,
                                       param_pairs=param_pairs,

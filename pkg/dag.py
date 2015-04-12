@@ -1,10 +1,6 @@
 import re
 import pydot
 
-# ----- temp ----- #
-fn = "/home/stewartwatts/flan/pkg/models/example/eight_schools_001/model.stan"
-code = open(fn).read()
-
 # ----- globals ----- #
 datatypes = [
     "int", "real", "vector", "row_vector", "matrix",
@@ -28,6 +24,17 @@ fillcolors = {
     "transformed parameters": "white",
     "generated quantities": "deepskyblue2",
 }
+shapes = {
+    # (block, deterministic)
+    ("data", False): "rect",
+    ("transformed data", False): "rect",
+    ("parameters", False): "circle",
+    ("parameters", True): "doublecircle",
+    ("transformed parameters", False): "circle",
+    ("transformed parameters", True): "doublecircle",
+    ("generated quantities", True): "doubleoctagon",
+    ("generated quantities", False): "doubleoctagon",
+}
 
 # ----- graph logic ----- #
 class Node(object):
@@ -46,6 +53,7 @@ class Node(object):
         self.dims = dims
         self.block = block
         self.deterministic = False    # change while parsing edges if deterministic
+        self.include = False          # change while parsing edges if node is involved in "~" or "<-"
 
 class Edge(object):
     def __init__(self, from_name, to_name):
@@ -63,22 +71,24 @@ class DAG(object):
     params -> white circles
     deterministic -> double bordered
     """
-    def __init__(self, nodes, edges):
+    def __init__(self, nodes, edges, graph_name=None):
         self.nodes = nodes
         self.edges = edges
+        self.graph_name = graph_name if graph_name else "Stan Graph"
         self.dims = list(set([node.dims for node in self.nodes if node.dims]))
         self.clusters = {repr(dim): pydot.Cluster(str(i), 
                                                   label='%s' % repr(dim).replace("'", ""), 
                                                   fontsize=20) for i, dim in enumerate(self.dims)}
-        self.graph = pydot.Dot(graph_type="digraph")
+        self.graph = pydot.Dot(graph_type="digraph", label='"%s"' % graph_name)
 
         for node in self.nodes:
-            if node.dims:
+            if node.dims and node.include:
                 self.clusters[repr(node.dims)].add_node(pydot.Node('%s' % node.name, 
                                                         label='"%s"' % node.name, 
                                                         style="filled",
-                                                        fillcolor=fillcolors[node.block]))
-            else:
+                                                        fillcolor=fillcolors[node.block],
+                                                        shape=shapes[(node.block, node.deterministic)]))
+            elif node.include:
                 self.graph.add_node(pydot.Node('%s' % node.name, label='"%s"' % node.name))
 
         for dims in self.clusters:
@@ -87,11 +97,12 @@ class DAG(object):
         for edge in self.edges:
             self.graph.add_edge(pydot.Edge('%s' % edge.from_name, '%s' % edge.to_name))
 
-    def write_graph(self, filepath):
+    def write_png(self, filepath):
         self.graph.write_png(filepath)
 
-    def write_raw(self, filepath):
-        self.graph.write_raw(filepath)
+    def to_string(self):
+        # debugging
+        self.graph.to_string()
 
 
 # ----- parsing logic ----- #
@@ -175,7 +186,7 @@ def collapse_multiline(lines):
             return collapse_multiline(lines[:i] + ["".join(lines[i:i+2])] + lines[i+2:])
     return lines
 
-def build_edges(blocks, nodes_dict):
+def build_edges(blocks, nodes_dict, debug=True):
     """
     Parse the blocks where we do assignment and distribution declarations for edges.
     For assignments, set the `deterministic` attribute of the assigned node to be True.
@@ -187,21 +198,26 @@ def build_edges(blocks, nodes_dict):
     for block_name in block_names:
         lines = blocks.get(block_name)
         if lines:
-            lines = filter(lambda line: "~" in line or "<-" in line, collapse_multiline(lines))
+            lines = collapse_multiline(lines)
+            lines = filter(lambda line: "~" in line or "<-" in line, lines)
             for line in lines:
                 line = re.sub("\s+", "", line)
                 deterministic = "<-" in line
                 to_str, from_str = line.split("<-" if deterministic else "~")
                 to_node = re.findall(nodes_re, to_str)[0]
-                from_nodes = re.findall(nodes_re, to_str)
+                from_nodes = re.findall(nodes_re, from_str)
+
+                # save state on the nodes
+                nodes_dict[to_node].include = True
                 # note that this node is deterministic
                 if deterministic:
                     nodes_dict[to_node].deterministic = True
                 for from_node in from_nodes:
+                    nodes_dict[from_node].include = True
                     edges.append(Edge(from_node, to_node))
     return edges
 
-def parse_stan(code, debug=False):
+def parse_stan(code, graph_name=None, debug=False):
     blocks = get_blocks(code)
     if debug:
         for name in blocks:
@@ -211,5 +227,5 @@ def parse_stan(code, debug=False):
     nodes_dict = build_nodes(blocks)
     edges = build_edges(blocks, nodes_dict)
     nodes = nodes_dict.values()
-    return DAG(nodes, edges)
+    return DAG(nodes, edges, graph_name)
 

@@ -1,11 +1,12 @@
 import os
+import traceback
 import numpy as np
 import pandas as pd
 import pystan
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from .utils import timeit
+from .dag import parse_stan
 from . import conf
 
 class ModelSpec(object):
@@ -71,7 +72,7 @@ class StanAnalysis(object):
                                       iter=_iter,
                                       thin=thin)
 
-    def post_process(self):
+    def post_process(self, graphviz=True):
         """
         Plot parameters of interest in standard format and write text output.
         """
@@ -85,7 +86,14 @@ class StanAnalysis(object):
         for name, params in self.model_spec.param_groups.items():
             self.param_group_plot(name, params)
 
-        self.write_fit_stats() 
+        if graphviz:
+            try:
+                self.graphviz_plot()
+            except:
+                traceback.print_exc()
+
+        self.write_fit_stats()
+        self.copy_notes()
 
     def run(self):
         self.compile()
@@ -96,6 +104,7 @@ class StanAnalysis(object):
         """
         KDE + trace
         """
+        print param
         trace = pd.Series(self.fit.extract(permuted=True)[param])
         fig, axs = plt.subplots(2, 1, figsize=(12, 8))
         sns.distplot(trace, 
@@ -105,7 +114,7 @@ class StanAnalysis(object):
         x_min, x_max = axs[0].get_xlim()
         if x_min < 0. < x_max:
             axs[0].axvline(0., color="k", lw=1., alpha=0.6)
-        trade.plot(ax=axs[1])
+        trace.plot(ax=axs[1])
         fig.suptitle(param)
         if write_to_disk:
             fn = os.path.join(self.output_dir, "%s_trace.png" % param)
@@ -114,14 +123,14 @@ class StanAnalysis(object):
         else:
             plt.show()
 
-    def param_pair_plot(self, pair):
+    def param_pair_plot(self, pair, write_to_disk=True):
         """
         2d KDE to examine correlation
         """
         x = self.fit.extract(permuted=True)[pair[0]]
         y = self.fit.extract(permuted=True)[pair[1]]
         df = pd.DataFrame({pair[0]: x, pair[1]: y})
-        sns.joinplot(pair[0], pair[1], data=df, kind="kde", size=10, space=0)
+        sns.jointplot(pair[0], pair[1], data=df, kind="kde", size=10, space=0)
         fig = plt.gcf()
         if write_to_disk:
             fn = os.path.join(self.output_dir, "%s-%s.png" % pair)
@@ -130,7 +139,7 @@ class StanAnalysis(object):
         else:
             plt.show()
 
-    def param_group_plot(self, name, params):
+    def param_group_plot(self, name, params, write_to_disk=True):
         """
         Many parameter correlation plots at once, in less detail
         """
@@ -143,12 +152,26 @@ class StanAnalysis(object):
         else:
             plt.show()
 
+    def graphviz_plot(self):
+        dag = parse_stan(self.model_spec.model_code, self.model_spec.model_name)
+        fn = os.path.join(self.output_dir, "graphviz.png")
+        print "writing < %s >" % fn
+        dag.write_png(fn)
+
     def write_fit_stats(self):
         fit_stats_fn = os.path.join(self.output_dir, "fit_stats.txt")
         s = "<br>".join(repr(self.fit).replace(" ", "&nbsp;").split("\n")[1:])
         print "writing < %s >" % fit_stats_fn
         with open(fit_stats_fn, "w") as f:
             f.write(s)
+
+    def copy_notes(self):
+        notes_fn = os.path.join(conf.models_dir, self.model_spec.category, self.model_spec.model_name, "notes.txt")
+        output_fn = os.path.join(self.output_dir, "notes.txt")
+        if os.path.exists(notes_fn):
+            with open(notes_fn, "r") as from_f:
+                with open(output_fn, "w") as to_f:
+                    to_f.write(from_f.read())
 
     def clean_output_dir(self):
         fns = [os.path.join(self.output_dir, fn) for fn in os.listdir(self.output_dir)]

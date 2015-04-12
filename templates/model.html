@@ -1,7 +1,95 @@
 {% extends "base.html" %}
-
 {% block title %}{{ model_name }}{% endblock %}
+
 {% block content %}
-<h2>Fit Stats</h2>
-{{ fit_stats|safe }}
+
+<div class="row">
+    <h2>Category: {{ category }}</h2>
+    <h2>Model Name: {{ model_name }}</h2>
+    {% if no_model %}<h3 style="color:red;">Model not found.</h3>{% endif %}
+</div>
+<hr>
+
+<!--  -->
+<div class="row">
+    <h2>Notes</h2>
+    {{ notes|safe }}
+    <br><br>
+
+    <h2>Fit Stats</h2>
+    {{ fit_stats|safe }}
+</div>
+<hr>
+
+
+<div class="row">
+    <h2>Model Graph</h2>
+    {% if has_graphviz %}
+    <img src="/static/{{ category }}/{{ model_name }}/graphviz.png">
+    {% endif %}
+</div>
+<hr>
+
+<div class="row">
+    <h2>Single Parameter Plots</h2>
+    <div class="col-md-6">
+        {% for tup in single_params %}
+        {% if loop.index is odd %}
+        <h3>{{ tup.0 }}</h3>
+        <img src="/static/{{ category }}/{{ model_name }}/{{ tup.1 }}">
+        {% endif %}
+        {% endfor %}
+    </div>
+    <div class="col-md-6">
+        {% for tup in single_params %}
+        {% if loop.index is even %}
+        <h3>{{ tup.0 }}</h3>
+        <img src="/static/{{ category }}/{{ model_name }}/{{ tup.1 }}">
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+<hr>
+
+<div class="row">
+    <h2>Parameter Pair Plots</h2>
+    <div class="col-md-6">
+        {% for tup in param_pairs %}
+        {% if loop.index is odd %}
+        <h3>{{ tup.0 }}</h3>
+        <img src="/static/{{ category }}/{{ model_name }}/{{ tup.1 }}">
+        {% endif %}
+        {% endfor %}
+    </div>
+    <div class="col-md-6">
+        {% for tup in param_pairs %}
+        {% if loop.index is even %}
+        <h3>{{ tup.0 }}</h3>
+        <img src="/static/{{ category }}/{{ model_name }}/{{ tup.1 }}">
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+<hr>
+
+<div class="row">
+    <h2>Parameter Group Grid Plots</h2>
+    <div class="col-md-6">
+        {% for tup in param_groups %}
+        {% if loop.index is odd %}
+        <h3>{{ tup.0 }}</h3>
+        <img src="/static/{{ category }}/{{ model_name }}/{{ tup.1 }}">
+        {% endif %}
+        {% endfor %}
+    </div>
+    <div class="col-md-6">
+        {% for tup in param_groups %}
+        {% if loop.index is even %}
+        <h3>{{ tup.0 }}</h3>
+        <img src="/static/{{ category }}/{{ model_name }}/{{ tup.1 }}">
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
 {% endblock %}
