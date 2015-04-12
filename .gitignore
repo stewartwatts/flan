@@ -1,5 +1,4 @@
 *.pyc
-venv/*
 static/css/bootstrap*
 static/js/bootstrap*
 static/example/*

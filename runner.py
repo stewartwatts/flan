@@ -6,5 +6,5 @@ models = [
 ]
 
 if __name__ == "__main__":
-    for model_f in models:
-        model_f()
+    for model in models:
+        model()

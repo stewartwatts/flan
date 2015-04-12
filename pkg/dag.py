@@ -7,7 +7,7 @@ datatypes = [
     "positive_ordered", "simplex", "unit_vector", "cov_matrix",
     "corr_matrix", "cholesky_factor_cov", "cholesky_factor_corr"
 ]
-declaration_re = re.compile("(%s)(<[\w,=]+>){0,1}(\[[\w,\-\+\*\/]\]){0,1}\s+([\w_]+)(\[[\w,\+\-\*\/]+\]){0,1}" % "|".join(datatypes))
+declaration_re = re.compile("(%s)(<[\w,=]+>){0,1}(\[[\w_,\-\+\*\/]+\]){0,1}\s+([\w_]+)(\[[\w_,\+\-\*\/]+\]){0,1}" % "|".join(datatypes))
 # regexs to pull out code blocks
 regexs = [
     ("data", re.compile("data\s*{")),
@@ -80,6 +80,7 @@ class DAG(object):
                                                   label='%s' % repr(dim).replace("'", ""), 
                                                   fontsize=20) for i, dim in enumerate(self.dims)}
         self.graph = pydot.Dot(graph_type="digraph", label='"%s"' % graph_name)
+        self.edge_pairs = []
 
         for node in self.nodes:
             if node.dims and node.include:
@@ -95,7 +96,10 @@ class DAG(object):
             self.graph.add_subgraph(self.clusters[dims])
 
         for edge in self.edges:
-            self.graph.add_edge(pydot.Edge('%s' % edge.from_name, '%s' % edge.to_name))
+            edge_pair = ('%s' % edge.from_name, '%s' % edge.to_name)
+            if edge_pair not in self.edge_pairs:
+                self.graph.add_edge(pydot.Edge(*edge_pair))
+                self.edge_pairs.append(edge_pair)
 
     def write_png(self, filepath):
         self.graph.write_png(filepath)
@@ -146,8 +150,8 @@ def get_blocks(code):
 
 # -- nodes -- #
 def process_dims(dim, array_dim):
-    dim = dim.replace("[", "").replace("]", "").split(",") if dim else []
-    array_dim = array_dim.replace("[", "").replace("]", "").split(",") if array_dim else []
+    dim = dim.replace("[", "").replace("]", "").replace(" ", "").split(",") if dim else []
+    array_dim = array_dim.replace("[", "").replace("]", "").replace(" ", "").split(",") if array_dim else []
     dims = dim + array_dim  # sort?
     return tuple(dims) if len(dims) > 0 else None
  
