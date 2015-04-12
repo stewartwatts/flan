@@ -144,7 +144,7 @@ class StanAnalysis(object):
         Many parameter correlation plots at once, in less detail
         """
         df = pd.DataFrame({param: chain for param, chain in self.fit.extract(permuted=True).items() if param in params})
-        fig = sns.pairplot(df, vars=list(df.columns))
+        fig = sns.pairplot(df, vars=list(df.columns), diag_kind="kde", plot_kws={"alpha": 0.1})
         if write_to_disk:
             fn = os.path.join(self.output_dir, "%s_pairplot.png" % name)
             print "writing < %s >" % fn
