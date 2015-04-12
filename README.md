@@ -24,5 +24,5 @@ Flan is intended to streamline the bookkeeping involved in building up Stan mode
  - Dot cannot draw overlapping plates, so instead plates correspond to Stan's indexing of a datatype.  For example, to model `i` students answering `j` question, with the answers indexed by `[i, j]`, there will be a plate for the `i` students, the `j` questions, and the `[i, j]` answers, instead of two overlapping plates that share the answers.
  - Graphviz is not Python software, so it must be pre-installed with a non-pip package manager, like apt-get.
 
- #### Dependencies
+#### Dependencies
  - Apart from Graphviz, the other dependencies listed in requirements.txt are all easily installed with pip.
