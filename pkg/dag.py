@@ -7,7 +7,7 @@ datatypes = [
     "positive_ordered", "simplex", "unit_vector", "cov_matrix",
     "corr_matrix", "cholesky_factor_cov", "cholesky_factor_corr"
 ]
-declaration_re = re.compile("(%s)(<[\w,\s=]+>){0,1}(\[[\w\s_,\-\+\*\/]+\]){0,1}\s+([\w_]+)(\[[\w\s_,\+\-\*\/]+\]){0,1}" % "|".join(datatypes))
+declaration_re = re.compile("(%s)(<[\w,\s=]+>){0,1}(\[[\w\s,\-\+\*\/]+\]){0,1}\s+([\w]+)(\[[\w\s,\+\-\*\/]+\]){0,1}" % "|".join(datatypes))
 # regexs to pull out code blocks
 regexs = [
     ("data", re.compile("data\s*{")),
@@ -76,15 +76,22 @@ class DAG(object):
         self.edges = edges
         self.graph_name = graph_name if graph_name else "Stan Graph"
         self.dims = list(set([node.dims for node in self.nodes if node.dims]))
+        # flat list of dim names so we can exclude them from the graph
+        self.flat_dims = [dim for dim_tuple in self.dims for dim in dim_tuple]
         self.clusters = {repr(dim): pydot.Cluster(str(i), 
                                                   label='%s' % repr(dim).replace("'", ""), 
-                                                  fontsize=20) for i, dim in enumerate(self.dims)}
+                                                  fontsize=18,
+                                                  labeljust="l",
+                                                  labelloc="b") for i, dim in enumerate(self.dims)}
         self.graph = pydot.Dot(graph_type="digraph", label='"%s"' % graph_name)
         self.edge_pairs = []
 
         for node in self.nodes:
+            # we don't need to plot nodes corresponding only to vector / array dims
+            if node.name in self.flat_dims:
+                continue
             if node.dims and node.include:
-                self.clusters[repr(node.dims)].add_node(pydot.Node('%s' % node.name, 
+                self.clusters[repr(node.dims)].add_node(pydot.Node(node.name, 
                                                         label='"%s"' % node.name, 
                                                         style="filled",
                                                         fillcolor=fillcolors[node.block],
@@ -96,7 +103,9 @@ class DAG(object):
             self.graph.add_subgraph(self.clusters[dims])
 
         for edge in self.edges:
-            edge_pair = ('%s' % edge.from_name, '%s' % edge.to_name)
+            if edge.from_name in self.flat_dims or edge.to_name in self.flat_dims:
+                continue
+            edge_pair = (edge.from_name, edge.to_name)
             if edge_pair not in self.edge_pairs:
                 self.graph.add_edge(pydot.Edge(*edge_pair))
                 self.edge_pairs.append(edge_pair)
@@ -209,7 +218,9 @@ def build_edges(blocks, nodes_dict, debug=True):
                 deterministic = "<-" in line
                 to_str, from_str = line.split("<-" if deterministic else "~")
                 to_node = re.findall(nodes_re, to_str)[0]
-                from_nodes = re.findall(nodes_re, from_str)
+                from_nodes = re.findall(from_nodes_re, from_str)
+                # filter out instances where a variable name is *contained* in another variable name
+                from_nodes = [n for n in from_nodes if re.search("\W%s\W" % n, ";" + from_str)]
 
                 # save state on the nodes
                 nodes_dict[to_node].include = True
