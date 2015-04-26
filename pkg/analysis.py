@@ -27,10 +27,17 @@ class ModelSpec(object):
         code_fn = os.path.join(conf.models_dir, self.category, self.model_name, "model.stan")
         self.model_code = open(code_fn).read()
         self.build_data()
+        self.set_dimensions()
+        self.set_hyperparameters()
 
     def build_data(self):
-        raw_input("-->")
         raise NotImplementedError("ModelSpec.build_data: must override in subclass of ModelSpec.")
+
+    def set_dimensions(self):
+        print "Unimplemented ModelSpec.set_dimensions() called."
+
+    def set_hyperparameters(self):
+        print "Unimplemented ModelSpec.set_hyperparameters() called."
 
 
 class StanAnalysis(object):
