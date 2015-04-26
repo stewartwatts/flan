@@ -114,7 +114,6 @@ class DAG(object):
         self.graph.write_png(filepath)
 
     def to_string(self):
-        # debugging
         self.graph.to_string()
 
 
@@ -161,10 +160,10 @@ def get_blocks(code):
 def process_dims(dim, array_dim):
     dim = dim.replace("[", "").replace("]", "").replace(" ", "").split(",") if dim else []
     array_dim = array_dim.replace("[", "").replace("]", "").replace(" ", "").split(",") if array_dim else []
-    dims = dim + array_dim  # sort?
+    dims = dim + array_dim
     return tuple(dims) if len(dims) > 0 else None
  
-def build_nodes(blocks, debug=False):
+def build_nodes(blocks):
     """
     Parse code lines to create Node instances, via variable declarations.
     The model block contains no variable declarations.
@@ -177,29 +176,19 @@ def build_nodes(blocks, debug=False):
             for line in lines:
                 try:
                     datatype, constraint, dim, name, array_dim = declaration_re.match(line).groups()
-                    if debug:
-                        print "\n\n", line
-                        print "datatype:", datatype 
-                        print "constraint:", constraint
-                        print "dim:", dim
-                        print "name:", name
-                        print "array_dim:", array_dim
                     nodes_dict[name] = Node(name, datatype, constraint, process_dims(dim, array_dim), block_name)
                 except:
-                    if debug:
-                        print "no match"
+                    pass
     return nodes_dict
 
 # -- edges -- #
 def collapse_multiline(lines):
     for i, line in enumerate(lines):
         if ("~" in line or "<-" in line) and line[-1] != ";":
-            print "line:", line, "   last char: < %s >" % line[-1]
-            raw_input("--> ")
             return collapse_multiline(lines[:i] + ["".join(lines[i:i+2])] + lines[i+2:])
     return lines
 
-def build_edges(blocks, nodes_dict, debug=True):
+def build_edges(blocks, nodes_dict):
     """
     Parse the blocks where we do assignment and distribution declarations for edges.
     For assignments, set the `deterministic` attribute of the assigned node to be True.
@@ -232,15 +221,9 @@ def build_edges(blocks, nodes_dict, debug=True):
                     edges.append(Edge(from_node, to_node))
     return edges
 
-def parse_stan(code, graph_name=None, debug=False):
+def parse_stan(code, graph_name=None):
     blocks = get_blocks(code)
-    if debug:
-        for name in blocks:
-            print name
-            for line in blocks[name]:
-                print "  ", line
     nodes_dict = build_nodes(blocks)
     edges = build_edges(blocks, nodes_dict)
     nodes = nodes_dict.values()
     return DAG(nodes, edges, graph_name)
-
