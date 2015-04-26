@@ -20,7 +20,9 @@ class NewSpec(ModelSpec):
                                       param_groups=param_groups)
 
     def build_data(self):
+        """
         
+        """        
         self.data = data
 
 
