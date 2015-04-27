@@ -1,6 +1,6 @@
 functions {
   real age_factor(int race_num, vector beta_age_curve) {
-    return beta_age_curve[0] + beta_age_curve[1] * race_num + beta_age_curve[2] * race_num * race_num;
+    return beta_age_curve[1] + beta_age_curve[2] * race_num + beta_age_curve[3] * race_num * race_num;
   }
 }
 data {
@@ -73,9 +73,9 @@ transformed parameters {
   }
 }
 model {
-  beta_age_curve[0] ~ normal(0, 5);
-  beta_age_curve[1] ~ normal(-15, 10);
-  beta_age_curve[2] ~ normal(0, 5);
+  beta_age_curve[1] ~ normal(0, 5);
+  beta_age_curve[2] ~ normal(-15, 10);
+  beta_age_curve[3] ~ normal(0, 5);
   skills ~ normal(25, 8.3);
   perf_sigma ~ cauchy(0, 2.5);
 
