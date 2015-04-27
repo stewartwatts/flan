@@ -23,12 +23,17 @@ class ModelSpec(object):
         self.single_params = single_params
         self.param_pairs = param_pairs
         self.param_groups = param_groups
+        # we may have other specific plotting functions we want
+        # store them in a list and call them in post processing
+        # each function should take a `fit` and a directory path string as args
+        self.supplemental_plot_funcs = []
 
         code_fn = os.path.join(conf.models_dir, self.category, self.model_name, "model.stan")
         self.model_code = open(code_fn).read()
         self.build_data()
         self.set_dimensions()
         self.set_hyperparameters()
+        self.add_supplemental_plotters()
 
     def build_data(self):
         raise NotImplementedError("ModelSpec.build_data: must override in subclass of ModelSpec.")
@@ -39,6 +44,8 @@ class ModelSpec(object):
     def set_hyperparameters(self):
         print "Unimplemented ModelSpec.set_hyperparameters() called."
 
+    def add_supplemental_plotters(self):
+        print "Unimplemented ModelSpec.add_supplemental_plotters() called."
 
 class StanAnalysis(object):
     """
@@ -98,6 +105,9 @@ class StanAnalysis(object):
                 self.graphviz_plot()
             except:
                 traceback.print_exc()
+
+        for f in self.model_spec.supplemental_plot_funcs:
+            f(self.fit, self.output_dir)
 
         self.write_fit_stats()
         self.copy_notes()

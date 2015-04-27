@@ -1,8 +1,8 @@
-from pkg.models.example.eight_schools_001.stan import main as es1
+from pkg.models.hkjc.v001.stan import main as hkjc001
 # import other models ...
 
 models = [
-    es1, 
+    hkjc001, 
 ]
 
 if __name__ == "__main__":
