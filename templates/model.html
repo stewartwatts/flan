@@ -91,5 +91,25 @@
         {% endfor %}
     </div>
 </div>
+<hr>
 
+<div class="row">
+    <h2>Supplemental Plots</h2>
+    <div class="col-md-6">
+        {% for tup in supplemental %}
+        {% if loop.index is odd %}
+        <h3>{{ tup.0 }}</h3>
+        <img src="/static/{{ category }}/{{ model_name }}/{{ tup.1 }}">
+        {% endif %}
+        {% endfor %}
+    </div>
+    <div class="col-md-6">
+        {% for tup in supplemental %}
+        {% if loop.index is even %}
+        <h3>{{ tup.0 }}</h3>
+        <img src="/static/{{ category }}/{{ model_name }}/{{ tup.1 }}">
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}

@@ -72,10 +72,16 @@ def model_page(category, model_name):
     single_param_fns = [fn for fn in fns if "trace" in fn]
     param_pair_fns = [fn for fn in fns if "-" in fn]
     param_group_fns = [fn for fn in fns if "pairplot" in fn]
+    supplemental_png_fns = set([fn for fn in fns if ".png" in fn])
+    supplemental_png_fns -= set(single_params_fns)
+    supplemental_png_fns -= set(param_pair_fns)
+    supplemental_png_fns -= set(param_group_fns)
+    supplemental_png_fns = list(supplemental_png_fns)
     # format filenames into (title, fn)
     kw["single_params"] = [(fn.replace("_trace.png", ""), fn) for fn in single_param_fns]
     kw["param_pairs"] = [("%s vs %s" % tuple(fn.replace(".png", "").split("-")[::-1]), fn) for fn in param_pair_fns]
     kw["param_groups"] = [(fn.replace("_pairplot.png", ""), fn) for fn in param_group_fns]
+    kw["supplemental"] = [(fn.replace(".png", ""), fn) for fn in supplemental_png_fns]
 
     return render_template("model.html", **kw)
 
