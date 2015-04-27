@@ -1,0 +1,3 @@
+First model of HKJC racing data.
+
+The "performance" of each horse is drawn from a normal distribution with a single standard deviation, centered at a horse's skill plus the age adjustment parabola.  Age is modeled here as race number. 

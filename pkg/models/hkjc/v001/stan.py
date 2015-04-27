@@ -1,6 +1,8 @@
 import os
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 from hkjc.sqa import *
 from pkg.analysis import ModelSpec, StanAnalysis
 
@@ -30,8 +32,8 @@ class NewSpec(ModelSpec):
         data = {}
         sd = "20130101"
         df = results_df(Result.id > sd)
-        idx_horse = dict(enumerate(sorted(list(df["horse_id"].unique()))))
-        horses_idx = {v: k for k, v in idx_horse.items()}
+        horses = sorted(list(df["horse_id"].unique()))
+        horses_idx = dict(zip(horses, range(1, len(horses) + 1)))
         N_horses = len(horses_idx)
         df["horse_stan_idx"] = df["horse_id"].map(lambda v: horses_idx[v])
         r_12 = df.loc[12]
@@ -65,11 +67,6 @@ class NewSpec(ModelSpec):
         winner_12 = r_12.groupby(r_12.index.get_level_values(0)).apply(lambda g: np.argmin(g["rank"].values) + 1).values
         winner_14 = r_14.groupby(r_14.index.get_level_values(0)).apply(lambda g: np.argmin(g["rank"].values) + 1).values
 
-        # reporting
-        print "N_horses:", N_horses
-        print "N_12_races:", N_12_races
-        print "N_14_races:", N_14_races
-
         data["N_horses"] = N_horses
         data["N_12_races"] = N_12_races
         data["N_14_races"] = N_14_races
@@ -80,6 +77,30 @@ class NewSpec(ModelSpec):
         data["winner_12"] = winner_12
         data["winner_14"] = winner_14
         self.data = data
+
+    def set_dimensions(self):
+        # reporting
+        print "N_horses:", self.data["N_horses"]
+        print "N_12_races:", self.data["N_12_races"]
+        print "N_14_races:", self.data["N_14_races"]
+
+    def set_hyperparameters(self):
+        pass
+
+    def add_supplemental_plotters(self):
+        """
+        Create list of functions with arg signature: (fit, output_dir) for custom plots
+        """
+        def plot_age_curve_params(fit, output_dir):
+            df = pd.DateFrame(fit.extract(permuted=True)["beta_age_curve"], 
+                              columns=["Race_Num_Adj_%d" % i for i in range(3)])
+            fig = sns.pairplot(df, vars=list(df.columns), 
+                               diag_kind="kde", plot_kws={"alpha": 0.1})
+            fn = os.path.join(output_dir, "age_curve_args.png")
+            print "writing < %s >" % fn
+            fig.savefig(fn, bbox_inches="tight")
+
+        self.supplemental_plot_funcs.append(plot_age_curve_params)
 
 
 def main():
